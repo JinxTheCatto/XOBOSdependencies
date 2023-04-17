@@ -8,12 +8,12 @@ local configs = {
     funcEnabled = true,
     advancedinfo = false,
     logreturnvalues = false,
-    supersecretdevtoggle = false,
-    weaktables = false
+    supersecretdevtoggle = false
 }
 
 local game = game
 local mt = getrawmetatable(game)
+local mtnamecall = rawget(mt,"__namecall")
 local workspace = workspace
 local table = table
 local math = math
@@ -121,7 +121,7 @@ local function ErrorPrompt(Message,state)
     end
 end
 
-local Highlight = (isfile and loadfile and isfile("Highlight.lua") and loadfile("Highlight.lua")()) or loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/Highlight.lua"))()
+local Highlight = --[[(isfile and loadfile and isfile("Highlight.lua") and loadfile("Highlight.lua")()) or ]]loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/Highlight.lua"))()
 ---- GENERATED (kinda sorta mostly) BY GUI to LUA ----
 
 -- Instances:
@@ -216,10 +216,6 @@ local remoteEvent = Instance.new("RemoteEvent",Storage)
 local remoteFunction = Instance.new("RemoteFunction",Storage)
 local originalEvent = remoteEvent.FireServer
 local originalFunction = remoteFunction.InvokeServer
-
-local oldhooks = {
-    
-}
 
 local methodtypes = {
     ["fireserver"] = true,
@@ -917,7 +913,7 @@ end
 --- @param remote any
 --- @param function_info string
 --- @param blocked any
-function newRemote(type, name, args, remote, func, blocked, src, metamethod,info,id)
+function newRemote(type, name, args, remote, func, blocked, src, metamethod,info)
     if layoutOrderNum < 1 then layoutOrderNum = 999999999 end
     local RemoteTemplate = Create("Frame",{LayoutOrder = layoutOrderNum,Name = "RemoteTemplate",Parent = LogList,BackgroundColor3 = Color3.new(1, 1, 1),BackgroundTransparency = 1,Size = UDim2.new(0, 117, 0, 27)})
     local ColorBar = Create("Frame",{Name = "ColorBar",Parent = RemoteTemplate,BackgroundColor3 = (type == "event" and Color3.fromRGB(255, 242, 0)) or Color3.fromRGB(99, 86, 245),BorderSizePixel = 0,Position = UDim2.new(0, 0, 0, 1),Size = UDim2.new(0, 7, 0, 18),ZIndex = 2})
@@ -928,9 +924,8 @@ function newRemote(type, name, args, remote, func, blocked, src, metamethod,info
         Name = name,
         Function = func,
         Remote = cloneref(remote),
-        DebugId = id,
         metamethod = metamethod,
-        args = configs.weaktables and setmetatable(args,{__mode="v"}) or args,
+        args = args,--args = setmetatable(args,{__mode="kv"}),
         info = info,
         Log = RemoteTemplate,
         Button = Button,
@@ -942,7 +937,7 @@ function newRemote(type, name, args, remote, func, blocked, src, metamethod,info
         DecompiledScripts[src] = nil
     end
     logs[#logs + 1] = log
-    local connect = Button.MouseButton1Click:Connect(function()
+    local connect = Button.MouseButton1Click:Connect(newcclosure(function()
         eventSelect(RemoteTemplate)
         log.GenScript = genScript(remote, args)
         if blocked then
@@ -951,7 +946,7 @@ function newRemote(type, name, args, remote, func, blocked, src, metamethod,info
         if selected == log and RemoteTemplate then
             eventSelect(RemoteTemplate)
         end
-    end)
+    end))
     layoutOrderNum -= 1
     table.insert(remoteLogs, 1, {connect, RemoteTemplate})
     clean()
@@ -963,10 +958,11 @@ function genScript(remote, args)
     prevTables = {}
     local gen = ""
     if #args > 0 then
-        xpcall(function()
+        local suc,err = pcall(function()
             gen = v2v({args = args}) .. "\n"
-        end,function(err)
-            gen = gen.."-- An error has occured:\n--"..err.."\n-- TableToString failure! Reverting to legacy functionality (results may vary)\nlocal args = {"
+        end)
+        if not suc then
+            gen = gen .. "-- TableToString failure! Reverting to legacy functionality (results may vary)\nlocal args = {"
             if not pcall(function()
                     for i, v in next, args do
                         if type(i) ~= "Instance" and type(i) ~= "userdata" then
@@ -993,7 +989,7 @@ function genScript(remote, args)
             then
                 gen = gen .. "}\n-- Legacy tableToString failure! Unable to decompile."
             end
-        end)
+        end
         if not remote:IsDescendantOf(game) and not getnilrequired then
             gen = "function getNil(name,class) for _,v in next, getnilinstances()do if v.ClassName==class and v.Name==name then return v;end end end\n\n" .. gen
         end
@@ -1017,7 +1013,7 @@ end
 
 local ufunctions = {
     TweenInfo = function(u)
-        return ("TweenInfo.new(%s, %s, %s, %s, %s, %s)"):format(Safetostring(u.Time),Safetostring(u.EasingStyle),Safetostring(u.EasingDirection),Safetostring(u.RepeatCount),Safetostring(u.Reverses),Safetostring(u.DelayTime))
+        return ("TweenInfo.new(%s, %s, %s, %s, %s, %s)"):format(u.Time,u.EasingStyle,u.EasingDirection,u.RepeatCount,u.Reverses,u.DelayTime)
     end,
     Ray = function(u)
         return ("Ray.new(%s)"):format(Safetostring(u))
@@ -1036,16 +1032,17 @@ local ufunctions = {
         return ret .. ")"
     end,
     BrickColor = function(u)
-        return ("BrickColor.new(%s)"):format(Safetostring(u.Number))
+        return ("BrickColor.new(%s)"):format(u.Number)
     end,
     NumberRange = function(u)
         return ("NumberRange.new(%s, %s)"):format(Safetostring(u.Min),Safetostring(u.Max))
     end,
     Region3 = function(u)
         local center = u.CFrame.Position
-        local centersize = u.Size
-        
-        return ("Region3.new(%s, %s)"):format(v2s(center-centersize/2),v2s(center+centersize/2))
+        local size = u.CFrame.Size
+        local vector1 = center - size / 2
+        local vector2 = center + size / 2
+        return ("Region3.new(%s, %s)"):format(vector1,vector2)
     end,
     Faces = function(u)
         local faces = {}
@@ -1093,8 +1090,11 @@ local ufunctions = {
     CFrame = function(u)
         return ("CFrame.new(%s)"):format(Safetostring(u))
     end,
+    DockWidgetPluginGuiInfo = function(u)
+        ("DockWidgetPluginGuiInfo(%s, %s, %s, %s, %s, %s, %s)"):format("Enum.InitialDockState.Right", v2s(u.InitialEnabled), v2s(u.InitialEnabledShouldOverrideRestore), v2s(u.FloatingXSize), v2s(u.FloatingYSize), v2s(u.MinWidth), v2s(u.MinHeight))
+    end,
     PathWaypoint = function(u)
-        return ("PathWaypoint.new(%s, %s)"):format(v2s(u.Position), v2s(u.Action), u.Label)
+        return ("PathWaypoint.new(%s, %s)"):format(v2s(u.Position), v2s(u.Action), waypoint.Label)
     end,
     UDim = function(u)
         return ("UDim.new(%s)"):format(Safetostring(u))
@@ -1110,16 +1110,16 @@ local ufunctions = {
     end
 }
 
-local number_table = {
-    ["inf"] = "math.huge",
-    ["-inf"] = "-math.huge",
-    ["nan"] = "0/0"
-}
-
 local typeofv2sfunctions = {
     number = function(v)
-        local number = Safetostring(v)
-        return number_table[number] or number
+        if v == math.huge then
+            return "math.huge"
+        elseif v == -math.huge then
+            return "-math.huge"
+        elseif Safetostring(v):match("nan") then
+            return "0/0 --[[NaN]]"
+        end
+        return Safetostring(v)
     end,
     boolean = function(v)
         return Safetostring(v)
@@ -1290,10 +1290,11 @@ function f2s(f)
         end
     end
     if configs.funcEnabled then
-        local funcname = debug.info(f,"n")
+        local funcinfo = getinfo(f)
+        local funcinfoname = funcinfo and funcinfo.name
         
-        if funcname and funcname:match("^[%a_]+[%w_]*$") then
-            return ("function() %s end"):format(funcname)
+        if funcinfoname and funcinfoname:match("^[%a_]+[%w_]*$") then
+            return ("function() %s end"):format(funcinfoname)
         end
     end
     return ("function() %s end"):format(Safetostring(f))
@@ -1352,9 +1353,6 @@ function i2p(i,customgen)
                 else
                     out = ':WaitForChild("' .. parent.Name .. '")'..out
                 end
-            end
-            if i:IsDescendantOf(Players.LocalPlayer) then
-                return 'game:GetService("Players").LocalPlayer'..out
             end
             parent = parent.Parent
         end
@@ -1600,7 +1598,7 @@ function remoteHandler(methodName, remote, args, info, callingscript, metamethod
 
         local functionInfoStr = info and info.func or "--Function Info is disabled"
 
-        newRemote(remote:IsA("RemoteEvent") and lower(methodName) == "fireserver" and "event" or "function", remote.Name, args, remote, functionInfoStr, blockcheck, callingscript, metamethod, info, id)
+        newRemote(lower(methodName) == "fireserver" and "event" or "function", remote.Name, args, remote, functionInfoStr, blockcheck, callingscript, metamethod,info)
     end
 end
 
@@ -1629,9 +1627,6 @@ local newindex = function(method,originalfunction,...)
 
                 if configs.funcEnabled then
                     info = getinfo(getinfolevel)
-                    if not islclosure then
-                        info = getinfo(getinfolevel+1)
-                    end
                     local calling = getcallingscript()
                     callingscript = calling and cloneref(calling) or nil
                 end
@@ -1689,20 +1684,17 @@ end)
 
 local function disablehooks()
     if synv3 then
-        unhook(mt.__namecall,originalnamecall)
-        unhook(Instance.new("RemoteEvent").FireServer, originalEvent)
-        unhook(Instance.new("RemoteFunction").InvokeServer, originalFunction)
-        restorefunction(originalnamecall)
-        restorefunction(originalEvent)
-        restorefunction(originalFunction)
+        unhook(mtnamecall,originalnamecall)
+        unhook(remoteEvent.FireServer, originalEvent)
+        unhook(remoteFunction.InvokeServer, originalFunction)
     else
         if hookmetamethod then
             hookmetamethod(game,"__namecall",originalnamecall)
         else
-            hookfunction(mt.__namecall,originalnamecall)
+            hookfunction(mtnamecall,originalnamecall)
         end
-        hookfunction(Instance.new("RemoteEvent").FireServer, originalEvent)
-        hookfunction(Instance.new("RemoteFunction").InvokeServer, originalFunction)
+        hookfunction(remoteEvent.FireServer, originalEvent)
+        hookfunction(remoteFunction.InvokeServer, originalFunction)
     end
 end
 
@@ -1711,17 +1703,17 @@ function toggleSpy()
     if not toggle then
         local oldnamecall
         if synv3 then
-            oldnamecall = hook(mt.__namecall,clonefunction(newnamecall))
-            originalEvent = hook(Instance.new("RemoteEvent").FireServer, clonefunction(newFireServer))
-            originalFunction = hook(Instance.new("RemoteFunction").InvokeServer, clonefunction(newInvokeServer))
+            oldnamecall = hook(mtnamecall,clonefunction(newnamecall))
+            originalEvent = hook(remoteEvent.FireServer, clonefunction(newFireServer))
+            originalFunction = hook(remoteFunction.InvokeServer, clonefunction(newInvokeServer))
         else
             if hookmetamethod then
                 oldnamecall = hookmetamethod(game, "__namecall", clonefunction(newnamecall))
             else
-                oldnamecall = hookfunction(mt.__namecall,clonefunction(newnamecall))
+                oldnamecall = hookfunction(mtnamecall,clonefunction(newnamecall))
             end
-            originalEvent = hookfunction(Instance.new("RemoteEvent").FireServer, clonefunction(newFireServer))
-            originalFunction = hookfunction(Instance.new("RemoteFunction").InvokeServer, clonefunction(newInvokeServer))
+            originalEvent = hookfunction(remoteEvent.FireServer, clonefunction(newFireServer))
+            originalFunction = hookfunction(remoteFunction.InvokeServer, clonefunction(newInvokeServer))
         end
         originalnamecall = originalnamecall or function(...)
             return oldnamecall(...)
@@ -1807,7 +1799,7 @@ if not getgenv().SimpleSpyExecuted then
         bringBackOnResize()
         SimpleSpy3.Parent = (gethui and gethui()) or (syn and syn.protect_gui and syn.protect_gui(SimpleSpy3)) or CoreGui
         spawn(function()
-            local lp = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() or Players.LocalPlayer
+            local lp = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait() and Players.LocalPlayer
             generation = {
                 [GetDebugId(lp)] = 'game:GetService("Players").LocalPlayer',
                 [GetDebugId(lp:GetMouse())] = 'game:GetService("Players").LocalPlayer:GetMouse',
@@ -1924,18 +1916,11 @@ newButton(
                 if typeof(func) ~= 'string' then
                     codebox:setRaw("--[[Generating Function Info please wait]]")
                     RunService.Heartbeat:Wait()
-                    local lclosure = islclosure(func)
-                    local SourceScript = rawget(getfenv(func),"script")
-                    local CallingScript = selected.Source or nil
-
                     selected.Function = {
                         info = getinfo(func),
-                        constants = lclosure and setmetatable(getconstants(func), {__mode="kv"}) or "nil --Lua Closure expected got C Closure",
+                        constants = islclosure(func) and setmetatable(getconstants(func), {__mode="kv"}) or "nil --Lua Closure expected got C Closure",
                         upvalues = setmetatable(getupvalues(func), {__mode="kv"}), --Thank you GameGuy#5286
-                        script = {
-                            SourceScript = SourceScript or 'nil',
-                            CallingScript = CallingScript or 'nil'
-                        }
+                        script = rawget(getfenv(selected.info.func),"script")
                     }
                     
                     if configs.advancedinfo then
@@ -1943,15 +1928,10 @@ newButton(
 
                         selected.Function["advancedinfo"] = {
                             metamethod = selected.metamethod,
-                            DebugId = {
-                                SourceScriptDebugId = SourceScript and typeof(SourceScript) == "Instance" and GetDebugId(SourceScript) or "nil",
-                                CallingScriptDebugId = CallingScript and typeof(SourceScript) == "Instance" and GetDebugId(CallingScript) or "nil",
-                                RemoteDebugId = GetDebugId(Remote)
-                            },
-                            protos = lclosure and setmetatable(getprotos(func), {__mode="kv"}) or "nil --Lua Closure expected got C Closure"
+                            protos = islclosure(func) and setmetatable(getprotos(func), {__mode="kv"}) or "nil --Lua Closure expected got C Closure"
                         }
                         if Remote:IsA("RemoteFunction") then
-                            selected.Function["advancedinfo"]["OnClientInvoke"] = getcallbackmember and (getcallbackmember(Remote,"OnClientInvoke") or "nil") or "nil --Missing function getcallbackmember"
+                            selected.Function["advancedinfo"]["callbackmember"] = getcallbackmember and getcallbackmember(Remote,"OnClientInvoke")
                         else
                             if getconnections then
                                 selected.Function["advancedinfo"]["OnClientEvents"] = {}
@@ -1981,7 +1961,7 @@ newButton(
     function() return "Click to clear logs" end,
     function()
         TextLabel.Text = "Clearing..."
-        clear(logs)
+        logs = {}
         for i,v in next, LogList:GetChildren() do
             if not v:IsA("UIListLayout") then
                 v:Destroy()
@@ -2119,14 +2099,6 @@ end,
 function()
     configs.advancedinfo = not configs.advancedinfo
     TextLabel.Text = ("[%s] Display more remoteinfo"):format(configs.advancedinfo and "ENABLED" or "DISABLED")
-end)
-
-newButton("Weak Tables",function()
-    return ("[%s] [SECURITY] sets the arguments table to a weak table. Can cause argument loss."):format(configs.weaktables and "ENABLED" or "DISABLED")
-end,
-function()
-    configs.weaktables = not configs.weaktables
-    TextLabel.Text = ("[%s] [SECURITY] sets the arguments table to a weak table. Can cause argument loss."):format(configs.weaktables and "ENABLED" or "DISABLED")
 end)
 
 if syn and syn.request then request = syn.request end
